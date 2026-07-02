@@ -8,8 +8,8 @@ import TransactionsPage from '@/pages/TransactionsPage';
 import ChatPage from '@/pages/ChatPage';
 import SettingsPage from '@/pages/SettingsPage';
 import AttendantView from '@/pages/AttendantView';
+import CalculatorPage from '@/pages/CalculatorPage';
 import AttendantPinModal from '@/components/features/AttendantPinModal';
-import ToolsPanel from '@/components/features/ToolsPanel';
 import CashInModal from '@/components/features/CashInModal';
 import CashOutModal from '@/components/features/CashOutModal';
 import { useState } from 'react';
@@ -20,9 +20,6 @@ export default function AppLayout() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [cashInOpen, setCashInOpen] = useState(false);
   const [cashOutOpen, setCashOutOpen] = useState(false);
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [calcPrefillIn, setCalcPrefillIn] = useState<number | undefined>();
-  const [calcPrefillOut, setCalcPrefillOut] = useState<number | undefined>();
 
   // Owner-side: listen for attendant activity → toast notifications
   useAttendantNotifications();
@@ -43,28 +40,17 @@ export default function AppLayout() {
       case 'analytics':    return <AnalyticsPage />;
       case 'transactions': return <TransactionsPage />;
       case 'chat':         return <ChatPage />;
+      case 'calculator':   return <CalculatorPage />;
       case 'settings':     return <SettingsPage onOpenPinModal={() => setShowPinModal(true)} />;
       default:             return <HomePage />;
     }
-  };
-
-  const handleCalcCashIn = (amount: number) => {
-    setCalcPrefillIn(amount);
-    setCalcPrefillOut(undefined);
-    setCashInOpen(true);
-  };
-
-  const handleCalcCashOut = (amount: number) => {
-    setCalcPrefillOut(amount);
-    setCalcPrefillIn(undefined);
-    setCashOutOpen(true);
   };
 
   return (
     <div className="h-full flex overflow-hidden bg-slate-50">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex">
-        <Sidebar onOpenPinModal={() => setShowPinModal(true)} onOpenTools={() => setToolsOpen(true)} />
+        <Sidebar onOpenPinModal={() => setShowPinModal(true)} />
       </div>
 
       {/* Main Content */}
@@ -76,18 +62,18 @@ export default function AppLayout() {
 
       {/* Mobile: Liquid Glass Bottom Nav */}
       <div className="md:hidden">
-        <BottomNav onOpenTools={() => setToolsOpen(true)} />
+        <BottomNav />
       </div>
 
-      {/* Mobile FAB — floats above glass nav, centered */}
-      <div className="md:hidden fixed bottom-[18px] left-1/2 -translate-x-1/2 z-[60]">
+      {/* Mobile FAB — stacks upward above glass nav */}
+      <div className="md:hidden fixed bottom-[80px] left-1/2 -translate-x-1/2 z-[60]">
         <FABMenu
           cashInOpen={cashInOpen}
           cashOutOpen={cashOutOpen}
-          onCashIn={() => { setCalcPrefillIn(undefined); setCashInOpen(true); }}
-          onCashOut={() => { setCalcPrefillOut(undefined); setCashOutOpen(true); }}
-          onCashInClose={() => { setCashInOpen(false); setCalcPrefillIn(undefined); }}
-          onCashOutClose={() => { setCashOutOpen(false); setCalcPrefillOut(undefined); }}
+          onCashIn={() => setCashInOpen(true)}
+          onCashOut={() => setCashOutOpen(true)}
+          onCashInClose={() => setCashInOpen(false)}
+          onCashOutClose={() => setCashOutOpen(false)}
         />
       </div>
 
@@ -96,35 +82,20 @@ export default function AppLayout() {
         <FABMenu
           cashInOpen={cashInOpen}
           cashOutOpen={cashOutOpen}
-          onCashIn={() => { setCalcPrefillIn(undefined); setCashInOpen(true); }}
-          onCashOut={() => { setCalcPrefillOut(undefined); setCashOutOpen(true); }}
-          onCashInClose={() => { setCashInOpen(false); setCalcPrefillIn(undefined); }}
-          onCashOutClose={() => { setCashOutOpen(false); setCalcPrefillOut(undefined); }}
+          onCashIn={() => setCashInOpen(true)}
+          onCashOut={() => setCashOutOpen(true)}
+          onCashInClose={() => setCashInOpen(false)}
+          onCashOutClose={() => setCashOutOpen(false)}
           desktop
         />
       </div>
 
-      {/* Cash modals (prefilled from Tools calculator) */}
+      {/* Cash modals */}
       {cashInOpen && (
-        <CashInModal
-          onClose={() => { setCashInOpen(false); setCalcPrefillIn(undefined); }}
-          initialAmount={calcPrefillIn}
-        />
+        <CashInModal onClose={() => setCashInOpen(false)} />
       )}
       {cashOutOpen && (
-        <CashOutModal
-          onClose={() => { setCashOutOpen(false); setCalcPrefillOut(undefined); }}
-          initialAmount={calcPrefillOut}
-        />
-      )}
-
-      {/* Tools Panel (slide-up sheet with calculator) */}
-      {toolsOpen && (
-        <ToolsPanel
-          onClose={() => setToolsOpen(false)}
-          onUseCashIn={handleCalcCashIn}
-          onUseCashOut={handleCalcCashOut}
-        />
+        <CashOutModal onClose={() => setCashOutOpen(false)} />
       )}
 
       {/* Attendant PIN Modal */}

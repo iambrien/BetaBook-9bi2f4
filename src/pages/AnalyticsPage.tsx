@@ -8,19 +8,19 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { BarChart2, Calendar, Package, TrendingUp } from 'lucide-react';
+import { BarChart2, Calendar, Package, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Transaction } from '@/types';
 
 type Period = 'week' | 'month';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#EC4899'];
-const EXPENSE_CATEGORIES = ['Rent', 'Stock', 'Transport', 'Power', 'Other'];
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
   const { activeBusinessId } = useApp();
   const [period, setPeriod] = useState<Period>('week');
 
+  // ── Current period transactions ─────────────────────────────────────────
   const { data: transactions = [], isLoading } = useQuery<Transaction[]>({
     queryKey: ['analytics-txns', user?.id, activeBusinessId, period],
     queryFn: async () => {
@@ -38,7 +38,59 @@ export default function AnalyticsPage() {
     enabled: !!user,
   });
 
-  // --- Bar chart: income vs expense by day ---
+  // ── Month-over-Month comparison ─────────────────────────────────────────
+  const { data: momData } = useQuery({
+    queryKey: ['analytics-mom', user?.id, activeBusinessId],
+    queryFn: async () => {
+      const now = new Date();
+      // This month: 1st of current month → now
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      // Last month: 1st → last day of previous month
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+
+      const fetchMonth = async (from: string, to: string) => {
+        let q = supabase.from('transactions').select('type, amount')
+          .eq('user_id', user!.id)
+          .gte('created_at', from)
+          .lte('created_at', to);
+        if (activeBusinessId) q = q.eq('business_id', activeBusinessId);
+        const { data } = await q;
+        return data || [];
+      };
+
+      const [thisTxns, lastTxns] = await Promise.all([
+        fetchMonth(thisMonthStart, now.toISOString()),
+        fetchMonth(lastMonthStart, lastMonthEnd),
+      ]);
+
+      const sum = (arr: { type: string; amount: number }[], type: string) =>
+        arr.filter(t => t.type === type).reduce((s, t) => s + Number(t.amount), 0);
+
+      const thisIncome = sum(thisTxns, 'income');
+      const thisExpense = sum(thisTxns, 'expense');
+      const lastIncome = sum(lastTxns, 'income');
+      const lastExpense = sum(lastTxns, 'expense');
+
+      const pct = (cur: number, prev: number) => {
+        if (prev === 0) return cur > 0 ? 100 : 0;
+        return Math.round(((cur - prev) / prev) * 100);
+      };
+
+      return {
+        thisIncome, thisExpense,
+        thisNet: thisIncome - thisExpense,
+        lastIncome, lastExpense,
+        lastNet: lastIncome - lastExpense,
+        incomeChange: pct(thisIncome, lastIncome),
+        expenseChange: pct(thisExpense, lastExpense),
+        netChange: pct(thisIncome - thisExpense, lastIncome - lastExpense),
+      };
+    },
+    enabled: !!user,
+  });
+
+  // ── Bar chart data ───────────────────────────────────────────────────────
   const barData = (() => {
     const days = period === 'week' ? 7 : 30;
     const map: Record<string, { label: string; income: number; expense: number }> = {};
@@ -60,7 +112,7 @@ export default function AnalyticsPage() {
     return Object.values(map);
   })();
 
-  // --- Pie chart: expense by category ---
+  // ── Pie chart data ───────────────────────────────────────────────────────
   const pieData = (() => {
     const catMap: Record<string, number> = {};
     transactions.filter(t => t.type === 'expense').forEach(tx => {
@@ -72,7 +124,7 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.value - a.value);
   })();
 
-  // --- Best-selling items ranked ---
+  // ── Best-selling items ───────────────────────────────────────────────────
   const topItems = (() => {
     const itemMap: Record<string, { count: number; total: number }> = {};
     transactions.filter(t => t.type === 'income' && t.item_name).forEach(tx => {
@@ -90,6 +142,11 @@ export default function AnalyticsPage() {
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + Number(t.amount), 0);
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
 
+  const now = new Date();
+  const thisMonthName = now.toLocaleDateString('en-NG', { month: 'long' });
+  const lastMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    .toLocaleDateString('en-NG', { month: 'long' });
+
   return (
     <div className="min-h-full bg-slate-50">
       {/* Header */}
@@ -99,7 +156,6 @@ export default function AnalyticsPage() {
             <BarChart2 className="w-4 h-4 text-blue-500" />
             <h2 className="text-gray-900 font-heading font-bold text-lg">Analytics</h2>
           </div>
-          {/* Period toggle */}
           <div className="flex bg-gray-100 rounded-xl p-1">
             {(['week', 'month'] as Period[]).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
@@ -114,7 +170,44 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Summary row */}
+
+        {/* ── Month vs Last Month ──────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-4 pt-4 pb-2 border-b border-gray-50">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 text-sm">This Month vs Last Month</h3>
+              <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100">
+                {thisMonthName} vs {lastMonthName}
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-gray-50">
+            <MomCard
+              label="Income"
+              thisVal={momData?.thisIncome ?? 0}
+              lastVal={momData?.lastIncome ?? 0}
+              change={momData?.incomeChange ?? 0}
+              positiveIsGood={true}
+            />
+            <MomCard
+              label="Expenses"
+              thisVal={momData?.thisExpense ?? 0}
+              lastVal={momData?.lastExpense ?? 0}
+              change={momData?.expenseChange ?? 0}
+              positiveIsGood={false}
+            />
+            <MomCard
+              label="Net Profit"
+              thisVal={momData?.thisNet ?? 0}
+              lastVal={momData?.lastNet ?? 0}
+              change={momData?.netChange ?? 0}
+              positiveIsGood={true}
+              isNet
+            />
+          </div>
+        </div>
+
+        {/* ── Summary row ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
@@ -138,7 +231,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Income vs Expense Bar Chart */}
+        {/* ── Bar Chart ────────────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
           <h3 className="font-semibold text-gray-800 text-sm mb-4">Income vs Expenses</h3>
           {isLoading ? (
@@ -151,7 +244,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                  tickFormatter={(v) => v >= 1000 ? `₦${(v/1000).toFixed(0)}k` : `₦${v}`} />
+                  tickFormatter={(v) => v >= 1000 ? `₦${(v / 1000).toFixed(0)}k` : `₦${v}`} />
                 <Tooltip
                   formatter={(value: number) => [formatNaira(value)]}
                   contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }}
@@ -163,7 +256,7 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        {/* Expense Category Pie */}
+        {/* ── Expense Category Pie ─────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
           <h3 className="font-semibold text-gray-800 text-sm mb-4">Expense Breakdown</h3>
           {isLoading ? (
@@ -190,7 +283,7 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        {/* Best-Selling Items */}
+        {/* ── Best-Selling Items ───────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3.5 border-b border-gray-50">
             <Package className="w-4 h-4 text-blue-400" />
@@ -242,6 +335,60 @@ export default function AnalyticsPage() {
 
         <div className="h-4" />
       </div>
+    </div>
+  );
+}
+
+// ── Month-over-Month Card ────────────────────────────────────────────────────
+function MomCard({
+  label, thisVal, lastVal, change, positiveIsGood, isNet,
+}: {
+  label: string;
+  thisVal: number;
+  lastVal: number;
+  change: number;
+  positiveIsGood: boolean;
+  isNet?: boolean;
+}) {
+  const isUp = change > 0;
+  const isDown = change < 0;
+  const neutral = change === 0;
+
+  // For income/net: up = green, down = red
+  // For expenses: up = red (bad), down = green (good)
+  const isGood = positiveIsGood ? isUp : isDown;
+  const isBad = positiveIsGood ? isDown : isUp;
+
+  const changeColor = neutral
+    ? 'text-gray-400'
+    : isGood ? 'text-emerald-500' : 'text-red-500';
+
+  const changeBg = neutral
+    ? 'bg-gray-50 border-gray-100'
+    : isGood ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100';
+
+  const valueColor = isNet
+    ? (thisVal >= 0 ? 'text-emerald-600' : 'text-red-500')
+    : label === 'Income' ? 'text-emerald-600' : 'text-red-500';
+
+  return (
+    <div className="px-3 py-4 flex flex-col gap-1.5">
+      <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-wider">{label}</p>
+      <p className={`font-heading font-bold text-sm leading-tight ${valueColor}`}>
+        {formatNaira(Math.abs(thisVal))}
+        {isNet && thisVal < 0 && <span className="text-xs font-normal"> loss</span>}
+      </p>
+      <div className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full border text-[10px] font-bold w-fit ${changeBg} ${changeColor}`}>
+        {neutral
+          ? <Minus className="w-2.5 h-2.5" />
+          : isUp
+          ? <TrendingUp className="w-2.5 h-2.5" />
+          : <TrendingDown className="w-2.5 h-2.5" />}
+        {neutral ? '—' : `${Math.abs(change)}%`}
+      </div>
+      <p className="text-gray-300 text-[9px] truncate">
+        vs {formatNaira(Math.abs(lastVal))}
+      </p>
     </div>
   );
 }

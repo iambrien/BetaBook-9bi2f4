@@ -52,8 +52,11 @@ export default function CashInModal({ onClose, initialAmount }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white rounded-t-3xl md:rounded-2xl shadow-2xl animate-[fade-up_0.25s_ease-out_forwards]">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm p-0">
+      <div
+        className="w-full max-w-md bg-white rounded-t-3xl md:rounded-2xl shadow-2xl animate-[fade-up_0.25s_ease-out_forwards] flex flex-col"
+        style={{ maxHeight: '92dvh', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -68,7 +71,7 @@ export default function CashInModal({ onClose, initialAmount }: Props) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1.5">Amount (₦) *</label>
             <div className="relative">

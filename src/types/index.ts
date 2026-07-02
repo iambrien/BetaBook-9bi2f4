@@ -50,5 +50,5 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export type TabView = 'home' | 'analytics' | 'transactions' | 'chat' | 'settings';
+export type TabView = 'home' | 'analytics' | 'transactions' | 'chat' | 'settings' | 'calculator';
 export type AuthMode = 'signin' | 'signup';

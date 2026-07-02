@@ -2,36 +2,39 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { TabView } from '@/types';
-import { Home, BarChart2, List, MessageCircle, Settings, Calculator } from 'lucide-react';
+import { Home, BarChart2, List, MessageCircle, Calculator } from 'lucide-react';
 import React from 'react';
 
-interface BottomNavProps {
-  onOpenTools?: () => void;
-}
-
-// Nav tabs — Chat gets its own slot now; Tools triggers slide-up panel
+// Left 2 tabs
 const LEFT_TABS: { id: TabView; icon: typeof Home; label: string }[] = [
   { id: 'home', icon: Home, label: 'Home' },
   { id: 'analytics', icon: BarChart2, label: 'Analytics' },
 ];
 
+// Center tab (rendered as prominent pill)
+const CENTER_TAB: { id: TabView; icon: typeof Home; label: string } = {
+  id: 'calculator', icon: Calculator, label: 'Calc',
+};
+
+// Right 2 tabs
 const RIGHT_TABS: { id: TabView; icon: typeof Home; label: string }[] = [
   { id: 'transactions', icon: List, label: 'History' },
   { id: 'chat', icon: MessageCircle, label: 'AI Chat' },
 ];
 
+const ALL_TABS = [...LEFT_TABS, CENTER_TAB, ...RIGHT_TABS];
+
 interface PillState { left: number; width: number }
 
-export default function BottomNav({ onOpenTools }: BottomNavProps) {
+export default function BottomNav() {
   const { activeTab, setActiveTab } = useApp();
   const navRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [pill, setPill] = useState<PillState | null>(null);
 
-  const allTabs = [...LEFT_TABS, ...RIGHT_TABS];
-
   const updatePill = () => {
-    const activeIndex = allTabs.findIndex(t => t.id === activeTab);
+    const activeIndex = ALL_TABS.findIndex(t => t.id === activeTab);
+    if (activeIndex === -1) return;
     const el = tabRefs.current[activeIndex];
     const nav = navRef.current;
     if (!el || !nav) return;
@@ -62,10 +65,11 @@ export default function BottomNav({ onOpenTools }: BottomNavProps) {
     }
   };
 
+  const isCalcActive = activeTab === 'calculator';
+
   return (
     <>
       <div className="h-24 md:hidden" />
-
       <nav
         className="
           fixed bottom-6 left-1/2 -translate-x-1/2 z-50
@@ -83,9 +87,9 @@ export default function BottomNav({ onOpenTools }: BottomNavProps) {
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
       >
-        <div ref={navRef} className="relative flex items-center h-[60px] px-2">
-          {/* Sliding pill */}
-          {pill && (
+        <div ref={navRef} className="relative flex items-center h-[60px] px-1">
+          {/* Sliding pill highlight — only for non-center tabs */}
+          {pill && !isCalcActive && (
             <div
               className="absolute top-1/2 -translate-y-1/2 h-[44px] rounded-[20px] bg-blue-500/10 pointer-events-none"
               style={{
@@ -96,7 +100,7 @@ export default function BottomNav({ onOpenTools }: BottomNavProps) {
             />
           )}
 
-          {/* Left two tabs */}
+          {/* Left tabs */}
           {LEFT_TABS.map((tab, i) => (
             <NavTab
               key={tab.id}
@@ -107,26 +111,41 @@ export default function BottomNav({ onOpenTools }: BottomNavProps) {
             />
           ))}
 
-          {/* Center: Tools button (calculator) + FAB spacer */}
-          <div className="flex flex-col items-center justify-center flex-shrink-0 w-16">
-            <button
-              onClick={onOpenTools}
-              className="w-8 h-8 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center hover:bg-blue-100 transition-all active:scale-90"
-              title="Tools · Calculator"
-              aria-label="Open Tools"
+          {/* Center: Calculator tab — styled as a pill button */}
+          <button
+            ref={el => { tabRefs.current[2] = el; }}
+            onClick={() => handleTabClick('calculator', 2)}
+            className={`
+              flex-shrink-0 mx-1 flex flex-col items-center justify-center gap-0.5
+              w-14 h-[46px] rounded-[18px] transition-all duration-200 active:scale-90
+              ${isCalcActive
+                ? 'bg-blue-500 shadow-lg shadow-blue-300/40'
+                : 'bg-blue-50 border border-blue-100'}
+            `}
+          >
+            <Calculator
+              style={{
+                width: 18, height: 18,
+                color: isCalcActive ? '#ffffff' : '#3b82f6',
+                strokeWidth: isCalcActive ? 2.5 : 2,
+              }}
+            />
+            <span
+              className="text-[9px] font-bold tracking-wide"
+              style={{ color: isCalcActive ? '#ffffff' : '#3b82f6' }}
             >
-              <Calculator className="w-4 h-4 text-blue-500" strokeWidth={2} />
-            </button>
-          </div>
+              Calc
+            </span>
+          </button>
 
-          {/* Right two tabs */}
+          {/* Right tabs */}
           {RIGHT_TABS.map((tab, i) => (
             <NavTab
               key={tab.id}
               tab={tab}
               active={activeTab === tab.id}
-              ref={el => { tabRefs.current[i + 2] = el; }}
-              onClick={() => handleTabClick(tab.id, i + 2)}
+              ref={el => { tabRefs.current[i + 3] = el; }}
+              onClick={() => handleTabClick(tab.id, i + 3)}
             />
           ))}
         </div>

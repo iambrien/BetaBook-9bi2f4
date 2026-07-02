@@ -10,16 +10,16 @@ const navItems: { id: TabView; icon: typeof Home; label: string }[] = [
   { id: 'home', icon: Home, label: 'Dashboard' },
   { id: 'analytics', icon: BarChart2, label: 'Analytics' },
   { id: 'transactions', icon: List, label: 'Transactions' },
+  { id: 'calculator', icon: Calculator, label: 'Calculator' },
   { id: 'chat', icon: MessageCircle, label: 'AI Assistant' },
   { id: 'settings', icon: Settings, label: 'Settings' },
 ];
 
 interface SidebarProps {
   onOpenPinModal: () => void;
-  onOpenTools?: () => void;
 }
 
-export default function Sidebar({ onOpenPinModal, onOpenTools }: SidebarProps) {
+export default function Sidebar({ onOpenPinModal }: SidebarProps) {
   const { activeTab, setActiveTab } = useApp();
   const { user, signOut } = useAuth();
 
@@ -84,10 +84,6 @@ export default function Sidebar({ onOpenPinModal, onOpenTools }: SidebarProps) {
             <p className="text-gray-400 text-xs truncate">{user?.email}</p>
           </div>
         </div>
-        <button onClick={onOpenTools}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-500 hover:bg-blue-50 hover:text-blue-600 text-sm transition-all">
-          <Calculator className="w-4 h-4" />Calculator
-        </button>
         <button onClick={onOpenPinModal}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-gray-500 hover:bg-gray-50 hover:text-gray-700 text-sm transition-all">
           <Lock className="w-4 h-4" />Attendant Mode

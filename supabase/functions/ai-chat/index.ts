@@ -25,7 +25,6 @@ Rules when analyzing data:
 For debt questions (e.g., "Who owes me?", "How much is X owing?"):
 - Search the OUTSTANDING DEBTS section in the provided data
 - Give the exact amount, item name, and date
-- Example response: "Yes o! Mama Nkechi still dey owe you ₦15,000 for that Ankara fabric she collected on 12th June. You fit send am WhatsApp reminder from the Debt Tracker section."
 
 For financial summaries:
 - Compute totals from the transactions provided
@@ -34,6 +33,49 @@ For financial summaries:
 
 If no data is provided, gently encourage the user to start recording their transactions.
 Always be supportive and make the trader feel confident in managing their business.`;
+
+// Models to try in order — fallback if one fails
+const MODEL_CASCADE = [
+  'google/gemini-3-flash-preview',
+  'google/gemini-2.5-flash-lite',
+  'openai/gpt-5-nano',
+];
+
+async function callModel(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  messages: unknown[],
+): Promise<string> {
+  console.log(`[ai-chat] trying model: ${model}`);
+
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: 800,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`${model} responded ${res.status}: ${errText.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const text =
+    data.choices?.[0]?.message?.content?.trim() ||
+    data.output?.[0]?.content?.[0]?.text?.trim();
+
+  if (!text) throw new Error(`${model} returned empty content`);
+  return text;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -48,7 +90,6 @@ serve(async (req) => {
     const baseUrl = Deno.env.get('ONSPACE_AI_BASE_URL');
 
     if (!apiKey || !baseUrl) {
-      console.error('Missing ONSPACE_AI_API_KEY or ONSPACE_AI_BASE_URL');
       throw new Error('AI service not configured. Please contact support.');
     }
 
@@ -87,10 +128,9 @@ serve(async (req) => {
           });
           contextBlock += '\n';
         } else {
-          contextBlock += 'OUTSTANDING DEBTS: None — all customers have paid! 🎉\n\n';
+          contextBlock += 'OUTSTANDING DEBTS: None — all customers have paid!\n\n';
         }
 
-        // Recent transactions (up to 20)
         const recent = filtered.slice(0, 20);
         contextBlock += `RECENT ${recent.length} TRANSACTIONS:\n`;
         recent.forEach((t: Record<string, unknown>) => {
@@ -118,47 +158,38 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[ai-chat] calling OnSpace AI with ${enrichedMessages.length} messages, ${context?.length || 0} transactions`);
+    const allMessages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      ...enrichedMessages,
+    ];
 
-    const aiResponse = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...enrichedMessages,
-        ],
-        max_tokens: 800,
-        temperature: 0.7,
-      }),
-    });
+    console.log(`[ai-chat] ${enrichedMessages.length} messages, ${context?.length || 0} transactions`);
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error(`[ai-chat] AI API responded ${aiResponse.status}:`, errText);
-      throw new Error(`AI API error: ${aiResponse.status} — ${errText.slice(0, 200)}`);
+    // ── Try models in cascade until one succeeds ──────────────────────────
+    let lastError: Error | null = null;
+    for (const model of MODEL_CASCADE) {
+      try {
+        const message = await callModel(baseUrl, apiKey, model, allMessages);
+        console.log(`[ai-chat] success with ${model}, length: ${message.length}`);
+        return new Response(JSON.stringify({ message, model_used: model }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+        console.error(`[ai-chat] ${model} failed:`, lastError.message);
+        // Continue to next model
+      }
     }
 
-    const data = await aiResponse.json();
-    const message = data.choices?.[0]?.message?.content?.trim()
-      || data.output?.[0]?.content?.[0]?.text?.trim()
-      || 'E be like say something go wrong. Abeg try again!';
+    // All models failed
+    throw lastError || new Error('All AI models failed');
 
-    console.log(`[ai-chat] success, response length: ${message.length}`);
-
-    return new Response(JSON.stringify({ message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[ai-chat] error:', errMsg);
+    console.error('[ai-chat] fatal error:', errMsg);
     return new Response(
       JSON.stringify({ error: errMsg }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   }
 });

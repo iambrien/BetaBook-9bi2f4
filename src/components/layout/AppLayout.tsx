@@ -16,13 +16,22 @@ import { useState } from 'react';
 import { useAttendantNotifications } from '@/hooks/useAttendantNotifications';
 
 export default function AppLayout() {
-  const { activeTab, isAttendantMode } = useApp();
+  const { activeTab, setActiveTab, isAttendantMode } = useApp();
   const [showPinModal, setShowPinModal] = useState(false);
   const [cashInOpen, setCashInOpen] = useState(false);
   const [cashOutOpen, setCashOutOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
   // Owner-side: listen for attendant activity → toast notifications
   useAttendantNotifications();
+
+  // Close FAB when a modal opens
+  const openCashIn = () => { setFabOpen(false); setCashInOpen(true); };
+  const openCashOut = () => { setFabOpen(false); setCashOutOpen(true); };
+  const openCalculator = () => { setFabOpen(false); setActiveTab('calculator'); };
+
+  const closeCashIn = () => setCashInOpen(false);
+  const closeCashOut = () => setCashOutOpen(false);
 
   // ── Attendant Mode: completely locked UI ──────────────────────────────────
   if (isAttendantMode) {
@@ -55,53 +64,37 @@ export default function AppLayout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <main className="flex-1 overflow-y-auto scrollbar-hide pb-32 md:pb-6">
+        <main className="flex-1 overflow-y-auto scrollbar-hide md:pb-6">
           {renderPage()}
         </main>
       </div>
 
-      {/* Mobile: Liquid Glass Bottom Nav */}
+      {/* Mobile: Liquid Glass Bottom Nav with embedded FAB */}
       <div className="md:hidden">
-        <BottomNav />
-      </div>
-
-      {/* Mobile FAB — stacks upward above glass nav */}
-      <div className="md:hidden fixed bottom-[80px] left-1/2 -translate-x-1/2 z-[60]">
-        <FABMenu
-          cashInOpen={cashInOpen}
-          cashOutOpen={cashOutOpen}
-          onCashIn={() => setCashInOpen(true)}
-          onCashOut={() => setCashOutOpen(true)}
-          onCashInClose={() => setCashInOpen(false)}
-          onCashOutClose={() => setCashOutOpen(false)}
+        <BottomNav
+          onCashIn={openCashIn}
+          onCashOut={openCashOut}
+          onOpenCalculator={openCalculator}
+          fabOpen={fabOpen}
+          setFabOpen={setFabOpen}
         />
       </div>
 
-      {/* Desktop FAB */}
+      {/* Desktop FAB — bottom right */}
       <div className="hidden md:block fixed bottom-8 right-8 z-40">
         <FABMenu
-          cashInOpen={cashInOpen}
-          cashOutOpen={cashOutOpen}
-          onCashIn={() => setCashInOpen(true)}
-          onCashOut={() => setCashOutOpen(true)}
-          onCashInClose={() => setCashInOpen(false)}
-          onCashOutClose={() => setCashOutOpen(false)}
-          desktop
+          onCashIn={openCashIn}
+          onCashOut={openCashOut}
+          onOpenCalculator={openCalculator}
         />
       </div>
 
       {/* Cash modals */}
-      {cashInOpen && (
-        <CashInModal onClose={() => setCashInOpen(false)} />
-      )}
-      {cashOutOpen && (
-        <CashOutModal onClose={() => setCashOutOpen(false)} />
-      )}
+      {cashInOpen && <CashInModal onClose={closeCashIn} />}
+      {cashOutOpen && <CashOutModal onClose={closeCashOut} />}
 
       {/* Attendant PIN Modal */}
-      {showPinModal && (
-        <AttendantPinModal onClose={() => setShowPinModal(false)} />
-      )}
+      {showPinModal && <AttendantPinModal onClose={() => setShowPinModal(false)} />}
     </div>
   );
 }

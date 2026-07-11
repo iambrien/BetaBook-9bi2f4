@@ -61,12 +61,12 @@ export default function NotificationBell() {
         aria-label="Notifications"
       >
         {permission === 'granted'
-          ? <BellRing className="w-4.5 h-4.5 text-gray-600" />
+          ? <BellRing className="w-[18px] h-[18px] text-gray-600" />
           : permission === 'denied'
-          ? <BellOff className="w-4.5 h-4.5 text-gray-400" />
-          : <Bell className="w-4.5 h-4.5 text-gray-600" />}
+          ? <BellOff className="w-[18px] h-[18px] text-gray-400" />
+          : <Bell className="w-[18px] h-[18px] text-gray-600" />}
         {hasNew && debts.length > 0 && (
-          <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+          <span className="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
             {debts.length > 9 ? '9+' : debts.length}
           </span>
         )}

@@ -70,7 +70,7 @@ export default function AppLayout() {
       </div>
 
       {/* Mobile: Liquid Glass Bottom Nav with embedded FAB — hidden on chat page */}
-      <div className={activeTab === 'chat' ? 'hidden' : 'md:hidden'}>
+      <div className={(activeTab === 'chat' || activeTab === 'calculator') ? 'hidden' : 'md:hidden'}>
         <BottomNav
           onCashIn={openCashIn}
           onCashOut={openCashOut}

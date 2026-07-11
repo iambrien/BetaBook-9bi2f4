@@ -31,6 +31,9 @@ export default function TransactionList() {
       return data || [];
     },
     enabled: !!user,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
   });
 
   return (

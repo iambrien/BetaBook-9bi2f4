@@ -34,7 +34,7 @@ export default function Sidebar({ onOpenPinModal }: SidebarProps) {
       <div className="px-5 py-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-blue-500 flex items-center justify-center shadow-sm">
-            <BookOpen className="w-4.5 h-4.5 text-white" strokeWidth={2} />
+            <BookOpen className="w-[18px] h-[18px] text-white" strokeWidth={2} />
           </div>
           <div>
             <h1 className="text-gray-900 font-heading font-bold text-base leading-none">BetaBook</h1>

@@ -21,6 +21,9 @@ export default function StatsBanner() {
       return { inflow, outflow, profit: inflow - outflow };
     },
     enabled: !!user,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchInterval: 15000,
   });
 
   if (isLoading) {

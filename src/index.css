@@ -43,6 +43,10 @@
 }
 
 @layer utilities {
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
   @keyframes mascot-jump {
     0%   { transform: translateY(0) rotate(0deg); }
     30%  { transform: translateY(-18px) rotate(-8deg); }

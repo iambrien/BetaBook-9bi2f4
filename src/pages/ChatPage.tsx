@@ -73,7 +73,7 @@ const QUICK_PROMPTS = [
 export default function ChatPage() {
   const { user } = useAuth();
   const { activeTab, setActiveTab, activeBusinessId } = useApp();
-  const userName = user?.full_name?.split(' ')[0] || undefined;
+  const userName = user?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || undefined;
 
   const [messages, setMessages] = useState<ChatMessage[]>([buildWelcome(userName)]);
   const [input, setInput] = useState('');

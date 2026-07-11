@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { InlineCalculator } from '@/components/features/ToolsPanel';
 import CashInModal from '@/components/features/CashInModal';
 import CashOutModal from '@/components/features/CashOutModal';
-import { Calculator } from 'lucide-react';
+import { Calculator, ArrowLeft } from 'lucide-react';
+import { useApp } from '@/contexts/AppContext';
 
 export default function CalculatorPage() {
+  const { setActiveTab } = useApp();
   const [cashInOpen, setCashInOpen] = useState(false);
   const [cashOutOpen, setCashOutOpen] = useState(false);
   const [prefillIn, setPrefillIn] = useState<number | undefined>();
@@ -26,8 +28,16 @@ export default function CalculatorPage() {
     <div className="min-h-full bg-slate-50">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-4 shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-blue-500 flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          {/* Back arrow — mobile only */}
+          <button
+            onClick={() => setActiveTab('home')}
+            className="md:hidden w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors active:scale-95 flex-shrink-0"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-4 h-4 text-gray-600" />
+          </button>
+          <div className="w-8 h-8 rounded-xl bg-blue-500 flex items-center justify-center flex-shrink-0">
             <Calculator className="w-4 h-4 text-white" />
           </div>
           <div>

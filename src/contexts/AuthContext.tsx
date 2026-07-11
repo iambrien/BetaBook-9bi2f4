@@ -18,10 +18,20 @@ function mapUser(user: User, profile?: { full_name?: string; avatar_url?: string
   return {
     id: user.id,
     email: user.email!,
-    full_name: profile?.full_name || user.user_metadata?.full_name,
-    avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url,
-    phone: profile?.phone,
+    // Profile DB data takes priority over auth metadata
+    full_name: profile?.full_name || user.user_metadata?.full_name || user.user_metadata?.name || '',
+    avatar_url: profile?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+    phone: profile?.phone || '',
   };
+}
+
+async function fetchProfile(userId: string) {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('full_name, avatar_url, phone')
+    .eq('id', userId)
+    .single();
+  return data;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -33,28 +43,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (mounted && session?.user) {
-        const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('full_name, avatar_url, phone')
-          .eq('id', session.user.id)
-          .single();
+        const profile = await fetchProfile(session.user.id);
         if (mounted) setUser(mapUser(session.user, profile));
       }
       if (mounted) setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       if (event === 'SIGNED_IN' && session?.user) {
-        supabase.from('user_profiles').select('full_name, avatar_url, phone').eq('id', session.user.id).single().then(({ data: profile }) => {
-          if (mounted) setUser(mapUser(session.user, profile));
-        });
-        setLoading(false);
+        const profile = await fetchProfile(session.user.id);
+        if (mounted) setUser(mapUser(session.user, profile));
+        if (mounted) setLoading(false);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        setUser(prev => prev ? { ...prev } : mapUser(session.user));
+        const profile = await fetchProfile(session.user.id);
+        if (mounted) setUser(mapUser(session.user, profile));
+      } else if (event === 'USER_UPDATED' && session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (mounted) setUser(mapUser(session.user, profile));
       }
     });
 
@@ -113,22 +122,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: updated, error } = await supabase.auth.updateUser(updates);
     if (error) throw error;
-    if (updated.user) setUser(mapUser(updated.user));
 
+    // Always save to DB profile table first
     await supabase.from('user_profiles').upsert({
       id: user!.id,
       email: user!.email,
-      full_name: data.full_name ?? user?.full_name,
-      avatar_url: data.avatar_url ?? user?.avatar_url,
-      phone: data.phone ?? user?.phone,
+      full_name: data.full_name ?? user?.full_name ?? '',
+      avatar_url: data.avatar_url ?? user?.avatar_url ?? '',
+      phone: data.phone ?? user?.phone ?? '',
     });
-    // Refresh local user state with latest profile
-    const { data: freshProfile } = await supabase
-      .from('user_profiles')
-      .select('full_name, avatar_url, phone')
-      .eq('id', user!.id)
-      .single();
-    if (freshProfile && updated.user) setUser(mapUser(updated.user, freshProfile));
+
+    // Refresh local user state with latest profile from DB
+    const freshProfile = await fetchProfile(user!.id);
+    if (updated.user) setUser(mapUser(updated.user, freshProfile));
   };
 
   return (

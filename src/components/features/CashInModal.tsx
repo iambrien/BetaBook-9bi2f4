@@ -38,7 +38,9 @@ export default function CashInModal({ onClose, initialAmount }: Props) {
       qc.invalidateQueries({ queryKey: ['debts'] });
       qc.invalidateQueries({ queryKey: ['transactions-recent'] });
       qc.invalidateQueries({ queryKey: ['analytics-txns'] });
-      toast.success('Cash In recorded!');
+      qc.invalidateQueries({ queryKey: ['attendant-recent'] });
+      qc.invalidateQueries({ queryKey: ['debts-bell'] });
+      toast.success('Cash In recorded! 💰');
       onClose();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to save'),

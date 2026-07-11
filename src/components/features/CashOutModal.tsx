@@ -35,7 +35,8 @@ export default function CashOutModal({ onClose, initialAmount }: Props) {
       qc.invalidateQueries({ queryKey: ['stats'] });
       qc.invalidateQueries({ queryKey: ['transactions-recent'] });
       qc.invalidateQueries({ queryKey: ['analytics-txns'] });
-      toast.success('Expense recorded!');
+      qc.invalidateQueries({ queryKey: ['attendant-recent'] });
+      toast.success('Expense recorded! 📉');
       onClose();
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to save'),

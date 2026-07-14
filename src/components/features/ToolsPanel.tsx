@@ -54,11 +54,29 @@ export default function ToolsPanel({ onClose, onUseCashIn, onUseCashOut }: Tools
 export function InlineCalculator({
   onUseCashIn,
   onUseCashOut,
+  prefillValue,
+  onPrefillConsumed,
 }: {
   onUseCashIn?: (n: number) => void;
   onUseCashOut?: (n: number) => void;
+  prefillValue?: number;
+  onPrefillConsumed?: () => void;
 }) {
   const [display, setDisplay] = useState('0');
+
+  // Apply quick-amount prefill from parent
+  useEffect(() => {
+    if (prefillValue !== undefined && prefillValue > 0) {
+      setDisplay(String(prefillValue));
+      setPrevValue(null);
+      setOperator(null);
+      setWaitingForOperand(false);
+      setExpression('');
+      setResultShown(false);
+      onPrefillConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillValue]);
   const [prevValue, setPrevValue] = useState<number | null>(null);
   const [operator, setOperator] = useState<CalcOp>(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);

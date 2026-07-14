@@ -6,6 +6,7 @@ import { useApp } from '@/contexts/AppContext';
 import { ChatMessage } from '@/types';
 import { generateId } from '@/lib/utils';
 import { Send, RefreshCw, Sparkles, ArrowLeft, Smile } from 'lucide-react';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { cn } from '@/lib/utils';
 import betaAiMascot from '@/assets/beta-ai-mascot.png';
@@ -198,10 +199,10 @@ export default function ChatPage() {
     setInput('');
   };
 
-  const handleBack = () => {
-    // Go back to home tab
-    setActiveTab('home');
-  };
+  const handleBack = () => setActiveTab('home');
+
+  // Swipe right from left edge → go back
+  useSwipeBack(handleBack);
 
   // Suppress unused warning by just defining it and not commenting out the usage
   // The error message 'Definition for rule 'react-hooks/exhaustive-deps' was not found.'

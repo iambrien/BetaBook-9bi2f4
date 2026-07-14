@@ -14,6 +14,7 @@ import CashInModal from '@/components/features/CashInModal';
 import CashOutModal from '@/components/features/CashOutModal';
 import { useState } from 'react';
 import { useAttendantNotifications } from '@/hooks/useAttendantNotifications';
+import { useDebtReminders } from '@/hooks/useDebtReminders';
 
 export default function AppLayout() {
   const { activeTab, setActiveTab, isAttendantMode } = useApp();
@@ -24,6 +25,8 @@ export default function AppLayout() {
 
   // Owner-side: listen for attendant activity → toast notifications
   useAttendantNotifications();
+  // Debt reminder alarms
+  useDebtReminders();
 
   // Close FAB when a modal opens
   const openCashIn = () => { setFabOpen(false); setCashInOpen(true); };
